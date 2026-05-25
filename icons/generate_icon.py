@@ -12,6 +12,7 @@ BASE_SVG_PATH = os.path.join(ICONS_DIR, 'spoolman_base.svg')
 APP_ICON_PATH = os.path.join(ICONS_DIR, 'AppIcon.png')
 
 IOS_ICON_PATH = os.path.join(ROOT_DIR, 'ios-app', 'Resources', 'Assets.xcassets', 'AppIcon.appiconset', 'AppIcon.png')
+WEB_DIR = os.path.join(ROOT_DIR, 'web-app')
 
 
 def rasterize_base(size):
@@ -86,6 +87,23 @@ def save_ios(base):
     base.convert('RGBA').save(IOS_ICON_PATH)
 
 
+def save_web(base):
+    sizes = {
+        'favicon.ico': [16, 32, 48],
+        'icon-192.png': [192],
+        'icon-512.png': [512],
+        'apple-touch-icon.png': [180],
+    }
+
+    for name, dims in sizes.items():
+        path = os.path.join(WEB_DIR, name)
+        if name.endswith('.ico'):
+            imgs = [base.resize((d, d), Image.Resampling.LANCZOS).convert('RGBA') for d in dims]
+            imgs[0].save(path, format='ICO', sizes=[(d, d) for d in dims], append_images=imgs[1:])
+        else:
+            d = dims[0]
+            base.resize((d, d), Image.Resampling.LANCZOS).convert('RGBA').save(path)
+
 
 def main():
     icon = rasterize_base(1024)
@@ -95,6 +113,7 @@ def main():
     icon.convert('RGBA').save(APP_ICON_PATH)
 
     save_ios(icon)
+    save_web(icon)
 
     print(f'Generated {APP_ICON_PATH}')
     print('Updated Android launcher assets')

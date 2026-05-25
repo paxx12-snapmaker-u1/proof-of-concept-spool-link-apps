@@ -21,11 +21,15 @@ with two tags — one on each side — so the spool is detected regardless of or
 | Platform | Location | Language | Guide |
 |----------|----------|----------|-------|
 | iOS | `ios-app/` | Swift / SwiftUI | [User Guide](docs/IOS.md) |
+| Web | `web-app/` | Plain HTML + JS | |
+
 ## Running
 **iOS** — open `ios-app/NFCSpoolReader.xcodeproj` in Xcode and run on a physical device.
 Requires a paid Apple Developer subscription — NFC entitlements are not available with a free
 account.
 
+**Web** — open `web-app/index.html` directly, or serve it with any static file server.
+Requires Spoolman to be accessible over HTTPS and have CORS configured to allow the page's origin.
 
 ## Documentation
 
@@ -40,6 +44,7 @@ account.
 
 ```
 ios-app/       iOS app (Swift / SwiftUI)
+web-app/       Web app (HTML + JS)
 docs/          Design and API reference documentation
 icons/         App icon source files
 ```
