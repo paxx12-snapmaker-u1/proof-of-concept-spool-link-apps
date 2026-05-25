@@ -11,6 +11,8 @@ ICONS_DIR = os.path.join(ROOT_DIR, 'icons')
 BASE_SVG_PATH = os.path.join(ICONS_DIR, 'spoolman_base.svg')
 APP_ICON_PATH = os.path.join(ICONS_DIR, 'AppIcon.png')
 
+IOS_ICON_PATH = os.path.join(ROOT_DIR, 'ios-app', 'Resources', 'Assets.xcassets', 'AppIcon.appiconset', 'AppIcon.png')
+
 
 def rasterize_base(size):
     png_bytes = cairosvg.svg2png(url=BASE_SVG_PATH, output_width=size, output_height=size)
@@ -80,6 +82,10 @@ def apply_round_mask(image):
     out.paste(image, mask=mask)
     return out
 
+def save_ios(base):
+    base.convert('RGBA').save(IOS_ICON_PATH)
+
+
 
 def main():
     icon = rasterize_base(1024)
@@ -87,6 +93,8 @@ def main():
     icon = apply_round_mask(icon)
 
     icon.convert('RGBA').save(APP_ICON_PATH)
+
+    save_ios(icon)
 
     print(f'Generated {APP_ICON_PATH}')
     print('Updated Android launcher assets')

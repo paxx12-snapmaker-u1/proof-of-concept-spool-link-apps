@@ -1,0 +1,10 @@
+# Xcode user state
+*.xcuserstate
+xcuserdata/
+*.xcworkspace/xcuserdata/
+
+# iOS build
+Local.xcconfig
+build/
+DerivedData/
+*.ipa

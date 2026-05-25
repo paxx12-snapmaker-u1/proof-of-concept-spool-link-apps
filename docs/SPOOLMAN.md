@@ -132,6 +132,14 @@ Before writing, the comma-separated UID string must be JSON-encoded:
 jsonEncode("AABBCCDD,11223344") → "\"AABBCCDD,11223344\""
 ```
 
+iOS (`SpoolmanAPI.jsonEncodeString`):
+```swift
+private static func jsonEncodeString(_ s: String) -> String {
+    guard let data = try? JSONEncoder().encode(s) else { return "\"\(s)\"" }
+    return String(data: data, encoding: .utf8) ?? "\"\(s)\""
+}
+```
+
 ### Decoding rule
 
 On read, strip the outer JSON quotes if present (both apps handle both encoded and raw forms):

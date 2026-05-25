@@ -15,16 +15,31 @@ other applications from the relevant app marketplaces.
 
 A tag can be reassigned or unlinked at any time by scanning it again. Spools work best
 with two tags — one on each side — so the spool is detected regardless of orientation.
+
+## Apps
+
+| Platform | Location | Language | Guide |
+|----------|----------|----------|-------|
+| iOS | `ios-app/` | Swift / SwiftUI | [User Guide](docs/IOS.md) |
+## Running
+**iOS** — open `ios-app/NFCSpoolReader.xcodeproj` in Xcode and run on a physical device.
+Requires a paid Apple Developer subscription — NFC entitlements are not available with a free
+account.
+
+
 ## Documentation
 
 - [`docs/DESIGN.md`](docs/DESIGN.md) — UI/UX design guidelines: colors, button styles, component
   patterns, and screen layouts for both iOS and Android.
 - [`docs/SPOOLMAN.md`](docs/SPOOLMAN.md) — Spoolman API protocol reference: all endpoints, field
   formats, NFC tag schema, and sync logic.
+- [`docs/IOS.md`](docs/IOS.md) — iOS user guide.
+
 
 ## Project structure
 
 ```
+ios-app/       iOS app (Swift / SwiftUI)
 docs/          Design and API reference documentation
 icons/         App icon source files
 ```
