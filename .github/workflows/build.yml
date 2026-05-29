@@ -1,11 +1,11 @@
-name: Android
+name: Build
 
 on:
   push:
   pull_request:
 
 jobs:
-  build:
+  android:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -40,4 +40,38 @@ jobs:
         with:
           name: spoollink-${{ github.sha }}.apk
           path: android-app/app/build/outputs/apk/release/*.apk
+          if-no-files-found: error
+
+  ios:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Create Local.xcconfig
+        working-directory: ios-app
+        run: cp Local.xcconfig.sample Local.xcconfig
+
+      - name: Archive
+        working-directory: ios-app
+        run: |
+          xcodebuild archive \
+            -project NFCSpoolReader.xcodeproj \
+            -scheme SpoolLink \
+            -configuration Release \
+            -archivePath build/SpoolLink.xcarchive \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGN_IDENTITY=""
+
+      - name: Package unsigned IPA
+        working-directory: ios-app
+        run: |
+          mkdir -p build/Payload
+          cp -r build/SpoolLink.xcarchive/Products/Applications/SpoolLink.app build/Payload/
+          cd build && zip -r SpoolLink.ipa Payload/
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: spoollink-${{ github.sha }}.ipa
+          path: ios-app/build/SpoolLink.ipa
           if-no-files-found: error
