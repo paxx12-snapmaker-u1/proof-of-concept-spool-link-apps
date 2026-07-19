@@ -8,9 +8,10 @@ import androidx.compose.runtime.*
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import dev.pages.paxx12.spoollink.api.SpoolmanApi
+import dev.pages.paxx12.spoollink.formats.MifareClassicReader
+import dev.pages.paxx12.spoollink.formats.SnapmakerFormat
 import dev.pages.paxx12.spoollink.formats.TagFormatParser
 import dev.pages.paxx12.spoollink.model.*
-import dev.pages.paxx12.spoollink.formats.MifareClassicReader
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -193,10 +194,13 @@ class SpoolmanViewModel(application: Application) : AndroidViewModel(application
         val pending = pendingAssignSpool
         pendingAssignSpool = null
         viewModelScope.launch {
-            val resolvedNdef = ndefMessage ?: withContext(Dispatchers.IO) {
-                MifareClassicReader.tryReadNdef(tag)
+            val snapmakerPayload = withContext(Dispatchers.IO) { SnapmakerFormat.tryRead(tag) }
+            val payload: NFCTagPayload = snapmakerPayload ?: run {
+                val resolvedNdef = ndefMessage ?: withContext(Dispatchers.IO) {
+                    MifareClassicReader.tryReadNdef(tag)
+                }
+                TagFormatParser.parse(resolvedNdef, tag)
             }
-            val payload = TagFormatParser.parse(resolvedNdef, tag)
             if (pending != null) {
                 processAssignment(pending, uidHex, payload)
             } else {
