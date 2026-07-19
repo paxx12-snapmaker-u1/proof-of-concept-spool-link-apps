@@ -36,6 +36,7 @@ fun SettingsScreen(viewModel: SpoolmanViewModel) {
     var showSavedFeedback by remember { mutableStateOf(false) }
     var nameStyle by remember { mutableStateOf(viewModel.savedNameStyle()) }
     var showStyleMenu by remember { mutableStateOf(false) }
+    var storeRawTags by remember { mutableStateOf(viewModel.savedStoreRawTags()) }
 
     var presetsEditorTarget by remember { mutableStateOf<String?>(null) }
 
@@ -215,6 +216,31 @@ fun SettingsScreen(viewModel: SpoolmanViewModel) {
             }
             Spacer(Modifier.height(4.dp))
             Text("Presets appear as quick-pick suggestions when creating a spool.",
+                style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(horizontal = 28.dp))
+        }
+
+        item {
+            SectionHeader("Advanced")
+            Surface(Modifier.fillMaxWidth().padding(horizontal = 16.dp), shape = RoundedCornerShape(12.dp), tonalElevation = 2.dp) {
+                Row(
+                    Modifier.fillMaxWidth().padding(16.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text("Store raw tags", style = MaterialTheme.typography.bodyMedium)
+                    Switch(
+                        checked = storeRawTags,
+                        onCheckedChange = {
+                            storeRawTags = it
+                            viewModel.saveStoreRawTags(it)
+                        }
+                    )
+                }
+            }
+            Spacer(Modifier.height(4.dp))
+            Text("Saves a raw dump of every scanned tag to app storage, split by tag type " +
+                "(tags/mifare/<uid>.bin, tags/ntag/<uid>.bin).",
                 style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.padding(horizontal = 28.dp))
             Spacer(Modifier.height(32.dp))

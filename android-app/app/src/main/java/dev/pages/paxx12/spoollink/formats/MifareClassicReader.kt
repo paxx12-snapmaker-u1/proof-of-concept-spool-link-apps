@@ -25,13 +25,15 @@ object MifareClassicReader {
         }
     }
 
-    fun tryReadNdef(tag: Tag): NdefMessage? {
+    fun tryReadNdef(tag: Tag): NdefMessage? = tryReadRaw(tag)?.let(::parseNdefTlv)
+
+    fun tryReadRaw(tag: Tag): ByteArray? {
         val mc = MifareClassic.get(tag) ?: return null
         return try {
             mc.connect()
             val bytes = readNdefBytes(mc)
             mc.close()
-            bytes?.let(::parseNdefTlv)
+            bytes
         } catch (_: Exception) {
             runCatching { mc.close() }
             null
@@ -54,6 +56,8 @@ object MifareClassicReader {
         }
         return if (result.isEmpty()) null else result.toByteArray()
     }
+
+    fun parseNdefTlvPublic(data: ByteArray): NdefMessage? = parseNdefTlv(data)
 
     private fun parseNdefTlv(data: ByteArray): NdefMessage? {
         var i = 0

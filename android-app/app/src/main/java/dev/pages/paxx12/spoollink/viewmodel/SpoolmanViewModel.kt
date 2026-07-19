@@ -9,12 +9,15 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import dev.pages.paxx12.spoollink.api.SpoolmanApi
 import dev.pages.paxx12.spoollink.formats.MifareClassicReader
+import dev.pages.paxx12.spoollink.formats.NtagReader
 import dev.pages.paxx12.spoollink.formats.SnapmakerFormat
+import dev.pages.paxx12.spoollink.formats.SnapmakerTagPayload
 import dev.pages.paxx12.spoollink.formats.TagFormatParser
 import dev.pages.paxx12.spoollink.model.*
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import java.io.File
 
 class SpoolmanViewModel(application: Application) : AndroidViewModel(application) {
     private val prefs = application.getSharedPreferences("spoolman_prefs", Context.MODE_PRIVATE)
@@ -74,6 +77,12 @@ class SpoolmanViewModel(application: Application) : AndroidViewModel(application
     fun updatePresets(presets: FilamentPresets) {
         filamentPresets = presets
         presets.save(prefs)
+    }
+
+    fun savedStoreRawTags(): Boolean = prefs.getBoolean("store_raw_tags", false)
+
+    fun saveStoreRawTags(enabled: Boolean) {
+        prefs.edit().putBoolean("store_raw_tags", enabled).apply()
     }
 
     fun ensureSpoolsLoaded() {
@@ -186,27 +195,89 @@ class SpoolmanViewModel(application: Application) : AndroidViewModel(application
         statusMessage = "Ready to scan"
     }
 
+    private enum class TagKind { MIFARE, NTAG, OTHER }
+
+    private fun tagKind(tag: Tag): TagKind {
+        val techs = tag.techList
+        return when {
+            techs.contains("android.nfc.tech.MifareClassic") -> TagKind.MIFARE
+            techs.contains("android.nfc.tech.MifareUltralight") ||
+                techs.contains("android.nfc.tech.NfcA") -> TagKind.NTAG
+            else -> TagKind.OTHER
+        }
+    }
+
     fun processNfcTag(tag: Tag, ndefMessage: NdefMessage?) {
-        if (!isScanning && pendingAssignSpool == null) return
+        val activeSession = isScanning || pendingAssignSpool != null
+        val storeRaw = savedStoreRawTags()
+        if (!activeSession && !storeRaw) return
         val uidHex = tag.id.joinToString("") { "%02X".format(it) }
-        isScanning = false
-        statusMessage = "Tag detected"
+        if (activeSession) {
+            isScanning = false
+            statusMessage = "Tag detected"
+        }
         val pending = pendingAssignSpool
-        pendingAssignSpool = null
+        if (activeSession) pendingAssignSpool = null
+        val kind = tagKind(tag)
         viewModelScope.launch {
-            val snapmakerPayload = withContext(Dispatchers.IO) { SnapmakerFormat.tryRead(tag) }
-            val payload: NFCTagPayload = snapmakerPayload ?: run {
-                val resolvedNdef = ndefMessage ?: withContext(Dispatchers.IO) {
-                    MifareClassicReader.tryReadNdef(tag)
+            var rawBytes: ByteArray? = null
+            val payload: NFCTagPayload
+            if (kind == TagKind.MIFARE) {
+                val snapmakerResult = withContext(Dispatchers.IO) {
+                    SnapmakerFormat.tryReadWithRaw(tag)
                 }
-                TagFormatParser.parse(resolvedNdef, tag)
-            }
-            if (pending != null) {
-                processAssignment(pending, uidHex, payload)
+                if (snapmakerResult != null) {
+                    val (snapmakerPayload, snapmakerRaw) = snapmakerResult
+                    rawBytes = snapmakerRaw
+                    payload = snapmakerPayload
+                    if (storeRaw) withContext(Dispatchers.IO) { saveSnapmakerTag(snapmakerPayload) }
+                } else {
+                    val mifareRaw = withContext(Dispatchers.IO) { MifareClassicReader.tryReadRaw(tag) }
+                    rawBytes = mifareRaw
+                    val resolvedNdef = mifareRaw?.let(MifareClassicReader::parseNdefTlvPublic)
+                        ?: ndefMessage
+                    payload = TagFormatParser.parse(resolvedNdef, tag)
+                }
             } else {
-                processTag(payload, uidHex)
+                if (kind == TagKind.NTAG) {
+                    rawBytes = withContext(Dispatchers.IO) { NtagReader.tryReadRaw(tag) }
+                }
+                payload = TagFormatParser.parse(ndefMessage, tag)
+            }
+            if (storeRaw) {
+                rawBytes?.let { bytes -> withContext(Dispatchers.IO) { saveRawTag(kind, uidHex, bytes) } }
+            }
+            if (activeSession) {
+                if (pending != null) {
+                    processAssignment(pending, uidHex, payload)
+                } else {
+                    processTag(payload, uidHex)
+                }
             }
         }
+    }
+
+    private fun saveSnapmakerTag(payload: SnapmakerTagPayload) {
+        try {
+            val dir = getApplication<android.app.Application>()
+                .getExternalFilesDir("snapmaker") ?: return
+            dir.mkdirs()
+            File(dir, "${payload.uid}.json").writeText(payload.toJson())
+        } catch (_: Exception) { }
+    }
+
+    private fun saveRawTag(kind: TagKind, uidHex: String, raw: ByteArray) {
+        val subdir = when (kind) {
+            TagKind.MIFARE -> "tags/mifare"
+            TagKind.NTAG -> "tags/ntag"
+            TagKind.OTHER -> return
+        }
+        try {
+            val dir = getApplication<android.app.Application>()
+                .getExternalFilesDir(subdir) ?: return
+            dir.mkdirs()
+            File(dir, "$uidHex.bin").writeBytes(raw)
+        } catch (_: Exception) { }
     }
 
     suspend fun processTag(payload: NFCTagPayload, uidHex: String) {
